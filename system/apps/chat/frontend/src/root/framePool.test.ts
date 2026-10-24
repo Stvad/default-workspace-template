@@ -69,6 +69,28 @@ afterEach(() => {
 });
 
 describe("InnerFramePool", () => {
+  it("keeps twelve visited chat documents ready, then evicts the oldest hidden one", () => {
+    expect(MAX_HELD_FRAMES).toBe(12);
+    const chatIds = Array.from({ length: 12 }, (_, index) => `agent-${index}`);
+    const documents = new Map<string, HTMLIFrameElement>();
+    for (const chatId of chatIds) {
+      pool.show(chatId);
+      documents.set(chatId, frameOf(chatId));
+    }
+
+    expect(frames()).toHaveLength(12);
+    pool.show("agent-0");
+    expect(frameOf("agent-0")).toBe(documents.get("agent-0"));
+    pool.show("agent-12");
+
+    expect(frames()).toHaveLength(12);
+    expect(pool.heldChatIds()).not.toContain("agent-1");
+    expect(frameOf("agent-0")).toBe(documents.get("agent-0"));
+    expect(frameOf("agent-12")).toBeDefined();
+    expect(visibleChatIds()).toEqual(["agent-12"]);
+    for (const chatId of chatIds.slice(2)) expect(frameOf(chatId)).toBe(documents.get(chatId));
+  });
+
   it("makes one frame per chat at its page, shows the selected one and hides the rest", () => {
     pool.show("agent-a");
     pool.show("agent-b");

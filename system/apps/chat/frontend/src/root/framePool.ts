@@ -14,7 +14,7 @@ import { getBasePath } from "@imbue/workspace-ui/src/base-path";
 import type { ChatPageEmbedApi } from "../embedApi";
 import { handHandshakeDown } from "./relay";
 
-export const MAX_HELD_FRAMES = 4;
+export const MAX_HELD_FRAMES = 12;
 
 // What the shell grants an app page's frame (the PAGE_FRAME_SANDBOX of its live pages layer); a
 // nested frame can hold no more than its parent, so this asks for the same.
