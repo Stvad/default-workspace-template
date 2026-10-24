@@ -27,6 +27,7 @@ SETTINGS_FILENAME: Final[str] = "settings.json"
 # How many of the user's turns a chat in auto mode runs with fast mode on before the chat app
 # switches it to standard speed.
 DEFAULT_FAST_MODE_TURN_LIMIT: Final[int] = 2
+DEFAULT_RETAINED_CHAT_LIMIT: Final[int] = 12
 
 
 class FastModeMode(LowerCaseStrEnum):
@@ -51,6 +52,12 @@ class ChatSettings(FrozenModel):
         default=DEFAULT_FAST_MODE_TURN_LIMIT,
         ge=1,
         description="User turns a chat in auto mode runs fast for before it is switched to standard speed",
+    )
+    retained_chat_limit: int | None = Field(
+        default=DEFAULT_RETAINED_CHAT_LIMIT,
+        ge=1,
+        strict=True,
+        description="Visited chats whose pages stay loaded in a chat window; None keeps all opened chats",
     )
     is_fast_mode_notice_shown: bool = Field(
         default=False,
@@ -99,3 +106,17 @@ class ChatSettingsStore(MutableModel):
             temp_path = self.path.with_suffix(".json.tmp")
             temp_path.write_text(json.dumps(settings.model_dump(mode="json"), indent=2, sort_keys=True) + "\n")
             os.replace(temp_path, self.path)
+
+    def update(self, changes: dict[str, object]) -> ChatSettings:
+        """Apply changed fields against the latest file, preserving writes from other chat pages."""
+        with self._lock:
+            current = self.read()
+            updated = ChatSettings.model_validate({**current.model_dump(mode="json"), **changes})
+            if self.path is None:
+                self._in_memory = updated
+            else:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                temp_path = self.path.with_suffix(".json.tmp")
+                temp_path.write_text(json.dumps(updated.model_dump(mode="json"), indent=2, sort_keys=True) + "\n")
+                os.replace(temp_path, self.path)
+            return updated

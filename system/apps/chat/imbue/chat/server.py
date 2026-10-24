@@ -1092,7 +1092,7 @@ def _get_powered_by_endpoint(chat_id: str) -> Response:
 
 def _get_settings_endpoint() -> Response:
     """``GET /api/settings``: the workspace-wide chat settings."""
-    return model_response(ChatSettingsResponse(settings=get_state().chat_settings.read()))
+    return json_response(ChatSettingsResponse(settings=get_state().chat_settings.read()).model_dump(mode="json"))
 
 
 def _known_chat_or_not_found(chat_id: str) -> ChatId | Response:
@@ -1150,6 +1150,22 @@ def _put_settings_endpoint() -> Response:
     settings = parse_request_body(ChatSettings)
     get_state().chat_settings.write(settings)
     return model_response(ChatSettingsResponse(settings=settings))
+
+
+def _patch_settings_endpoint() -> Response:
+    """``PATCH /api/settings``: change named preferences without overwriting other chat pages' writes."""
+    body = parse_json_object_body()
+    if isinstance(body, Response):
+        return body
+    if not body or set(body) - set(ChatSettings.model_fields):
+        return json_response(
+            ErrorResponse(detail="Provide known chat settings to update").model_dump(), status_code=400
+        )
+    try:
+        settings = get_state().chat_settings.update(body)
+    except ValueError as e:
+        return json_response(ErrorResponse(detail=str(e)).model_dump(), status_code=400)
+    return json_response(ChatSettingsResponse(settings=settings).model_dump(mode="json"))
 
 
 def _upload_attachment() -> Response:
@@ -2582,6 +2598,9 @@ def create_application(state: ChatAppState) -> Flask:
     application.add_url_rule("/api/settings", view_func=_get_settings_endpoint, methods=["GET"])
     application.add_url_rule(
         "/api/settings", view_func=_put_settings_endpoint, methods=["PUT"], endpoint="_put_settings_endpoint"
+    )
+    application.add_url_rule(
+        "/api/settings", view_func=_patch_settings_endpoint, methods=["PATCH"], endpoint="_patch_settings_endpoint"
     )
     application.add_url_rule("/api/harnesses", view_func=_get_harnesses_endpoint, methods=["GET"])
     application.add_url_rule("/api/uploads", view_func=_upload_attachment, methods=["POST"])
