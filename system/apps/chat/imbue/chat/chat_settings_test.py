@@ -71,7 +71,7 @@ def test_retained_chat_limit_accepts_keep_all_and_rejects_invalid_counts() -> No
     assert ChatSettings(retained_chat_limit=None).retained_chat_limit is None
     for value in (0, -1, 1.5, "12", True):
         with pytest.raises(ValidationError):
-            ChatSettings(retained_chat_limit=value)
+            ChatSettings.model_validate({"retained_chat_limit": value})
 
 
 def test_partial_updates_preserve_other_preferences_across_store_instances(tmp_path: Path) -> None:
