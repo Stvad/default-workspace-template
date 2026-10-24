@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Final
 
 from loguru import logger as _loguru_logger
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import PrivateAttr
 from pydantic import ValidationError
@@ -71,6 +72,19 @@ class ChatSettings(FrozenModel):
         default=False,
         description="Whether the one-time notice explaining idle compaction has been shown",
     )
+
+
+class ChatSettingsPatch(FrozenModel):
+    """Only the preferences named in a PATCH body are changed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fast_mode_default: FastModeMode | None = None
+    fast_mode_turn_limit: int | None = Field(default=None, ge=1)
+    retained_chat_limit: int | None = Field(default=None, ge=1, strict=True)
+    is_fast_mode_notice_shown: bool | None = None
+    autocompact_default: bool | None = None
+    is_autocompact_notice_shown: bool | None = None
 
 
 class ChatSettingsStore(MutableModel):
